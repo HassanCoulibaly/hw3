@@ -13,9 +13,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromARGB(123, 249, 100, 26),
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'CARD GAME'),
     );
   }
 }
@@ -30,27 +32,34 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
+        title: Text(widget.title, style: TextStyle(fontSize: 42.0)),
         centerTitle: true,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[],
-        ),
+      body: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[],
+            ),
+          ),
+          GridView.count(
+            padding: EdgeInsets.all(150.0),
+            crossAxisSpacing: 1,
+            crossAxisCount: 4,
+            children: List.generate(4, (index) {
+              setState(() {});
+              return Center(
+                child: Text('Item $index', style: TextStyle(fontSize: 21)),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
