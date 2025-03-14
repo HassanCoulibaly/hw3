@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   runApp(
     ChangeNotifierProvider(
       create: (context) => GameProvider(),
-      child: const MaterialApp(home: MyHomePage()),
+      child: MaterialApp(navigatorKey: navigatorKey, home: MyHomePage()),
     ),
   );
 }
@@ -24,6 +26,83 @@ class CardModel {
   });
 }
 
+class FlipCard extends StatefulWidget {
+  final bool isFaceUp;
+  final String image;
+  final VoidCallback onTap;
+
+  const FlipCard({
+    super.key,
+    required this.isFaceUp,
+    required this.image,
+    required this.onTap,
+  });
+
+  @override
+  _FlipCardState createState() => _FlipCardState();
+}
+
+class _FlipCardState extends State<FlipCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _flipAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _flipAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
+  }
+
+  @override
+  void didUpdateWidget(covariant FlipCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isFaceUp) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedBuilder(
+        animation: _flipAnimation,
+        builder: (context, child) {
+          final angle = _flipAnimation.value * pi;
+          final transform =
+              Matrix4.identity()
+                ..setEntry(3, 2, 0.001) // Perspective effect
+                ..rotateY(angle);
+
+          return Transform(
+            alignment: Alignment.center,
+            transform: transform,
+            child:
+                _flipAnimation.value < 0.5
+                    ? Container(color: Colors.orangeAccent)
+                    : Image.asset(
+                      widget.image,
+                      fit: BoxFit.fitHeight,
+                    ), // Front of card
+          );
+        },
+      ),
+    );
+  }
+}
+
 class GameProvider extends ChangeNotifier {
   List<CardModel> cards = [];
   CardModel? firstCard;
@@ -38,14 +117,14 @@ class GameProvider extends ChangeNotifier {
 
   void _initializeGame() {
     List<String> images = [
-      'assets/card1.png',
-      'assets/card1.png',
-      'assets/card2.png',
-      'assets/card2.png',
-      'assets/card3.png',
-      'assets/card3.png',
-      'assets/card4.png',
-      'assets/card4.png',
+      'assets/images/cardA.png',
+      'assets/images/cardA.png',
+      'assets/images/card2.jpg',
+      'assets/images/card2.jpg',
+      'assets/images/card3.jpg',
+      'assets/images/card3.jpg',
+      'assets/images/card4.png',
+      'assets/images/card4.png',
     ];
     images.shuffle();
     cards =
@@ -74,14 +153,14 @@ class GameProvider extends ChangeNotifier {
 
   void _shuffleCards() {
     List<String> images = [
-      'assets/card1.png',
-      'assets/card1.png',
-      'assets/card2.png',
-      'assets/card2.png',
-      'assets/card3.png',
-      'assets/card3.png',
-      'assets/card4.png',
-      'assets/card4.png',
+      'assets/images/cardA.png',
+      'assets/images/cardA.png',
+      'assets/images/card2.jpg',
+      'assets/images/card2.jpg',
+      'assets/images/card3.jpg',
+      'assets/images/card3.jpg',
+      'assets/images/card4.png',
+      'assets/images/card4.png',
     ];
     images.shuffle();
     cards =
@@ -112,16 +191,46 @@ class GameProvider extends ChangeNotifier {
         firstCard!.isMatched = true;
         secondCard!.isMatched = true;
         score += 10;
+        firstCard = null;
+        secondCard = null;
       } else {
         Future.delayed(const Duration(seconds: 1), () {
-          firstCard!.isFaceUp = false;
-          secondCard!.isFaceUp = false;
-          notifyListeners();
+          if (firstCard != null && secondCard != null) {
+            firstCard!.isFaceUp = false;
+            secondCard!.isFaceUp = false;
+            notifyListeners();
+          }
+          firstCard = null;
+          secondCard = null;
         });
       }
-      firstCard = null;
-      secondCard = null;
+      if (cards.every((card) => card.isMatched)) {
+        _showWinDialog();
+      }
+      notifyListeners();
     }
+  }
+
+  void _showWinDialog() {
+    Timer(const Duration(milliseconds: 500), () {
+      showDialog(
+        context: navigatorKey.currentContext!,
+        builder:
+            (context) => AlertDialog(
+              title: const Text("Congratulations!"),
+              content: Text("You won the game!\nFinal Score: $score"),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    startGame();
+                  },
+                  child: const Text("Play Again"),
+                ),
+              ],
+            ),
+      );
+    });
   }
 }
 
@@ -140,7 +249,7 @@ class MyHomePage extends StatelessWidget {
             child: Consumer<GameProvider>(
               builder:
                   (context, game, child) => Text(
-                    "Score: \${game.score}",
+                    "Score: ${game.score}",
                     style: const TextStyle(fontSize: 20),
                   ),
             ),
@@ -154,7 +263,7 @@ class MyHomePage extends StatelessWidget {
             child: Consumer<GameProvider>(
               builder:
                   (context, game, child) => Text(
-                    "Time: \${game.time} sec",
+                    "Time: ${game.time} sec",
                     style: const TextStyle(fontSize: 20),
                   ),
             ),
@@ -173,17 +282,10 @@ class MyHomePage extends StatelessWidget {
                         ),
                     itemCount: game.cards.length,
                     itemBuilder: (context, index) {
-                      return GestureDetector(
+                      return FlipCard(
+                        isFaceUp: game.cards[index].isFaceUp,
+                        image: game.cards[index].image,
                         onTap: () => game.flipCard(index),
-                        child: Card(
-                          color: Colors.orange,
-                          child: Center(
-                            child:
-                                game.cards[index].isFaceUp
-                                    ? Image.asset(game.cards[index].image)
-                                    : Container(color: Colors.orangeAccent),
-                          ),
-                        ),
                       );
                     },
                   ),
