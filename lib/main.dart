@@ -1,3 +1,7 @@
+// Foungnigue Souleymane Hassan Coulibaly
+// Georgia State University
+// Mobile App Development
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -83,7 +87,7 @@ class _FlipCardState extends State<FlipCard>
           final angle = _flipAnimation.value * pi;
           final transform =
               Matrix4.identity()
-                ..setEntry(3, 2, 0.001) // Perspective effect
+                ..setEntry(3, 2, 0.001)
                 ..rotateY(angle);
 
           return Transform(
